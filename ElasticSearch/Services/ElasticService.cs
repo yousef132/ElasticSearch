@@ -16,7 +16,7 @@ namespace ElasticSearch.Services
             this.elasticSetting = options.Value;
 
             var settings = new ConnectionSettings(new Uri(elasticSetting.Url))
-                .DefaultIndex(elasticSetting.DefaultIndex);
+                .DefaultIndex(elasticSetting.DefaultIndex).EnableApiVersioningHeader();
 
             this._client = new ElasticClient(settings);
         }
@@ -71,6 +71,11 @@ namespace ElasticSearch.Services
         {
             var response = await _client.GetAsync<User>(Key, g =>
                          g.Index(elasticSetting.DefaultIndex));
+            if (!response.IsValid)
+            {
+                var debugInfo = response.DebugInformation;
+                var error = response.ServerError.Error;
+            }
             var searchResponse = _client.Search<User>(s => s
                        .Query(q => q
                            .MultiMatch(mm => mm
@@ -137,6 +142,53 @@ namespace ElasticSearch.Services
              */
 
             return fuzzySearchResponseWithMultipleFields.Hits.Select(hit => hit.Source);
+        }
+
+
+        public async Task<IEnumerable<User>> GetUsersWithHighlighting(string key = "jon")
+        {
+            var searchResponse = _client.Search<User>(s => s
+                                .Query(q => q
+                                    .MultiMatch(m => m
+                                       .Fields(f => f
+                                       .Field(u => u.FirstName)
+                                       .Field(u => u.LastName)  // Add more fields as needed
+                                    )
+                                        .Query(key) // The term to search for
+                                        .Fuzziness(Fuzziness.EditDistance(2)) // Fuzziness for typo tolerance
+                                    )
+                                )
+                                .Highlight(h => h
+                                    .Fields(f => f
+                                       .Field(u => u.FirstName)
+                                       .Field(u => u.LastName)
+                                ))
+                            );
+
+
+            foreach (var hit in searchResponse.Hits)
+            {
+                // Display the source document
+                var user = hit.Source;
+                var temp = hit.Highlight;
+
+                // Check if there are any highlights for the FirstName field
+                if (hit.Highlight.ContainsKey("firstName"))
+                {
+                    var highlightedFirstName = string.Join(", ", hit.Highlight["firstName"]);
+                    Console.WriteLine($"Highlighted FirstName: {highlightedFirstName}");
+                }
+
+                // Check if there are any highlights for the LastName field
+                if (hit.Highlight.ContainsKey("lastName"))
+                {
+                    var highlightedLastName = string.Join(", ", hit.Highlight["lastName"]);
+                    Console.WriteLine($"Highlighted LastName: {highlightedLastName}");
+                }
+            }
+
+
+            return searchResponse.Hits.Select(hit => hit.Source);
         }
     }
 }

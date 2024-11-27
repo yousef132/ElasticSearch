@@ -16,5 +16,7 @@ namespace ElasticSearch.Services
         Task<IEnumerable<User>> GetUsersWithFuzzySearchOnMultipleFields(string key);
         Task<IEnumerable<User>> GetUsersWithFuzzySearch(string key);
 
+        Task<IEnumerable<User>> GetUsersWithHighlighting(string key = "jon");
+
     }
 }

@@ -22,6 +22,13 @@ namespace ElasticSearch.Controllers
             return Ok("Index Created");
         }
 
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAll()
+        {
+            var res = await elasticService.GetAll();
+            return Ok(res);
+        }
+
         [HttpPost("add-user")]
         public async Task<IActionResult> CreateUser([FromBody] User user)
         {
@@ -76,6 +83,21 @@ namespace ElasticSearch.Controllers
             else
                 return BadRequest();
         }
+
+
+        [HttpPost("get-users-with-highlighting")]
+        public async Task<IActionResult> GetUsersWithHighlighting(string searchTerm)
+        {
+            var result = await elasticService.GetUsersWithHighlighting(searchTerm);
+
+            if (result.Count() == 0)
+                return NoContent();
+            else
+                return Ok(result);
+
+        }
+
+
 
     }
 }
